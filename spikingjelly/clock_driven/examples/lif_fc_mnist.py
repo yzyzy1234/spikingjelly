@@ -125,7 +125,7 @@ def main():
             optimizer.zero_grad()  # 在进行每个batch的训练之前，一般会先调用zero_grad()函数将模型中所有参数的梯度清零，以避免在进行多次反向传播计算时，历史梯度对当前的梯度计算产生影响。
 
             # 运行T个时长，out_spikes_counter是shape=[batch_size, 10]的tensor
-            # 记录整个仿真时长内，输出层的10个神经元的脉冲发放次数
+            # 记录整个仿真时长内，输出层的10个神经元的脉冲发放的次数
             for t in range(T):
                 if t == 0:
                     out_spikes_counter = net(encoder(img).float())
