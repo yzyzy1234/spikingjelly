@@ -10,7 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 
-parser = argparse.ArgumentParser(description='spikingjelly LIF MNIST Training')
+parser = argparse.ArgumentParser(description='spikingjelly LIF MNIST Training')  # 解析参数
 
 parser.add_argument('--device', default='cuda:0', help='运行的设备，例如“cpu”或“cuda:0”\n Device, e.g., "cpu" or "cuda:0"')
 
@@ -49,6 +49,7 @@ def main():
     print('\n'.join(f'{k}={v}' for k, v in vars(args).items()))
     print("####################################")
 
+    # 写回参数
     device = args.device
     dataset_dir = args.dataset_dir
     log_dir = args.log_dir
@@ -59,6 +60,7 @@ def main():
     tau = args.tau
     train_epoch = args.epoch
 
+    # 创建一个 SummaryWriter 对象，并将 TensorBoard 日志文件保存到 log_dir 目录中。之后，在训练过程中，我们可以使用 writer.add_xxx 方法向 TensorBoard 中添加不同类型的数据，例如添加训练集和测试集的准确率、损失函数的变化、梯度的直方图等。
     writer = SummaryWriter(log_dir)
 
     # 初始化数据加载器
@@ -90,33 +92,37 @@ def main():
 
     # 定义并初始化网络
     net = nn.Sequential(
-        nn.Flatten(),
-        nn.Linear(28 * 28, 10, bias=False),
-        neuron.LIFNode(tau=tau)
+        nn.Flatten(),   # 将二维图像压缩为一维张量
+        nn.Linear(28 * 28, 10, bias=False),  # 定义了一个线性层，用于将输入的一维张量映射为输出的一维张量。其中，28 * 28 表示输入的张量大小，10
+        # 表示输出的张量大小，bias=False 表示不使用偏置项。
+        neuron.LIFNode(tau=tau)  # 定义了一个 LIF（Leaky Integrate-and-Fire）节点，即一个带有时钟、能够累加输入电流并在电压达到阈值时发放脉冲的神经元。tau 是 LIF
+        # 节点的时间常数，用于控制节点的反应速度
     )
     net = net.to(device)
     # 使用Adam优化器
     optimizer = torch.optim.Adam(net.parameters(), lr=lr)
     # 使用泊松编码器
-    encoder = encoding.PoissonEncoder()
+    encoder = encoding.PoissonEncoder()  # 定义了一个 Poisson 编码器，用于将连续的输入信号转化为脉冲信号，以便输入到 LIF 节点中
     train_times = 0
-    max_test_accuracy = 0
+    max_test_accuracy = 0  # 用于记录训练轮数和测试准确率的最大值。
 
     test_accs = []
     train_accs = []
 
     for epoch in range(train_epoch):
-        print("Epoch {}:".format(epoch))
+        print("Epoch {}:".format(epoch))  # format用于将占位符{}替换成实际的值
         print("Training...")
         train_correct_sum = 0
         train_sum = 0
-        net.train()
+        net.train()  # 模型就会被设置为训练模式。这意味着，对于包含梯度的操作（如反向传播）以及包含 dropout 或 batch normalization 等随机过程的操作，PyTorch
+        # 会在这些操作中保留梯度信息，以便进行参数更新。
         for img, label in tqdm(train_data_loader):
             img = img.to(device)
             label = label.to(device)
-            label_one_hot = F.one_hot(label, 10).float()
+            label_one_hot = F.one_hot(label, 10).float()  # 转换成one-hot编码后，每个样本的标签就变成了一个长度为10
+            # 的向量。这样做的好处是，模型在训练时可以直接对这个向量进行预测，而不需要对原始标签值进行处理。同时，由于one-hot编码中每个标签的位置是互斥的，因此也可以更好地表示标签之间的关系。
 
-            optimizer.zero_grad()
+            optimizer.zero_grad()  # 在进行每个batch的训练之前，一般会先调用zero_grad()函数将模型中所有参数的梯度清零，以避免在进行多次反向传播计算时，历史梯度对当前的梯度计算产生影响。
 
             # 运行T个时长，out_spikes_counter是shape=[batch_size, 10]的tensor
             # 记录整个仿真时长内，输出层的10个神经元的脉冲发放次数
